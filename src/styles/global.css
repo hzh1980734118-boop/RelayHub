@@ -1,0 +1,134 @@
+:root {
+  --bg-primary: #050505;
+  --bg-secondary: #0a0a0a;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --accent-green: #b4ff39;
+  --accent-purple: #a855f7;
+  --accent-blue: #3b82f6;
+  --gradient-hero: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(180, 255, 57, 0.08) 100%);
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* Element Plus dark overrides */
+.el-button--primary {
+  --el-button-bg-color: #fff;
+  --el-button-border-color: #fff;
+  --el-button-text-color: #000;
+  --el-button-hover-bg-color: rgba(255, 255, 255, 0.9);
+  --el-button-hover-border-color: rgba(255, 255, 255, 0.9);
+  --el-button-hover-text-color: #000;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.el-button.is-plain {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--border-color);
+  --el-button-text-color: var(--text-primary);
+  --el-button-hover-bg-color: rgba(255, 255, 255, 0.05);
+  --el-button-hover-border-color: var(--border-hover);
+  --el-button-hover-text-color: var(--text-primary);
+  border-radius: 999px;
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  background: var(--bg-card) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  color: var(--text-primary) !important;
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-card);
+  --el-table-row-hover-bg-color: var(--bg-card-hover);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+}
+
+.el-card {
+  --el-card-bg-color: var(--bg-card);
+  --el-card-border-color: var(--border-color);
+  border-radius: 16px;
+}
+
+.el-tag {
+  border-radius: 999px;
+}
+
+.el-menu {
+  border-right: none !important;
+}
+
+.el-progress-bar__outer {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.el-dialog {
+  --el-dialog-bg-color: var(--bg-card);
+  --el-dialog-border-radius: 16px;
+}
+
+.el-message-box {
+  --el-messagebox-border-radius: 16px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}

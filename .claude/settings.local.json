@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "PowerShell(if \\(Test-Path \"$env:USERPROFILE\\\\.claude\\\\CLAUDE.md\"\\) { Write-Host \"EXISTS\"; Get-Content \"$env:USERPROFILE\\\\.claude\\\\CLAUDE.md\" } else { Write-Host \"NOT_FOUND\" })",
+      "PowerShell($url = \"https://raw.githubusercontent.com/multica-ai/andrej-karpathy-skills/main/CLAUDE.md\"; $dest = \"$env:USERPROFILE\\\\.claude\\\\CLAUDE.md\"; try { Invoke-WebRequest -Uri $url -OutFile $dest -ErrorAction Stop; Write-Host \"Downloaded successfully\"; Write-Host \"---\"; Get-Content $dest | Select-Object -First 5; Write-Host \"...\"; Write-Host \"Total lines: $\\(\\(Get-Content $dest | Measure-Object -Line\\).Lines\\)\" } catch { Write-Host \"multica-ai failed, trying forrestchang...\"; $url2 = \"https://raw.githubusercontent.com/forrestchang/andrej-karpathy-skills/main/CLAUDE.md\"; Invoke-WebRequest -Uri $url2 -OutFile $dest -ErrorAction Stop; Write-Host \"Downloaded from forrestchang\"; Write-Host \"Total lines: $\\(\\(Get-Content $dest | Measure-Object -Line\\).Lines\\)\" })",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)"
+    ]
+  }
+}
