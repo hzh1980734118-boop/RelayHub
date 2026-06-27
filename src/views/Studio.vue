@@ -16,6 +16,13 @@
         </div>
         <span>RelayHub</span>
       </router-link>
+
+      <nav class="studio-nav">
+        <router-link to="/studio/image">生图</router-link>
+        <router-link to="/studio/video">生视频</router-link>
+        <router-link to="/studio/audio">配音</router-link>
+      </nav>
+
       <div class="header-right">
         <span class="balance">
           <el-icon><Coin /></el-icon>
@@ -27,20 +34,13 @@
       </div>
     </header>
 
-    <!-- 左侧模式切换 -->
+    <!-- 顶部模式导航（三个独立入口） -->
+    <!-- 左侧快捷返回首页 -->
     <aside class="mode-rail">
-      <button
-        v-for="mode in modes"
-        :key="mode.key"
-        type="button"
-        class="mode-btn"
-        :class="{ active: activeMode === mode.key }"
-        :title="mode.label"
-        @click="activeMode = mode.key"
-      >
-        <el-icon :size="20"><component :is="mode.icon" /></el-icon>
-        <span>{{ mode.label }}</span>
-      </button>
+      <router-link to="/" class="mode-btn" title="返回首页">
+        <el-icon :size="20"><HomeFilled /></el-icon>
+        <span>首页</span>
+      </router-link>
     </aside>
 
     <!-- 模型选择面板 -->
@@ -93,60 +93,51 @@
       </aside>
     </Transition>
 
-    <!-- 主内容区：生成结果展示 -->
-    <main class="studio-main">
-      <div class="output-zone">
-        <!-- 生成中 -->
-        <div v-if="generating" class="output-generating">
-          <div class="output-label">{{ selectedModel?.name || '请选择模型' }}</div>
-          <div class="generating-indicator">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
+    <!-- 主内容区：预览展示 -->
+    <main class="studio-main" :class="{ 'is-video': activeMode === 'video' && (generating || hasVideoPreview) }">
+      <!-- 视频模式：生成中 / 已生成 → 16:9 预览面板 -->
+      <div v-if="activeMode === 'video' && (generating || hasVideoPreview)" class="video-preview-zone">
+        <div class="video-preview-frame">
+          <div v-if="generating" class="video-preview-loading">
+            <el-icon class="spin" :size="40"><Loading /></el-icon>
+            <span>视频生成中...</span>
           </div>
-          <p class="generating-text">正在生成...</p>
-        </div>
-
-        <!-- 已有生成结果 -->
-        <div v-else-if="generationOutput" class="output-content">
-          <div class="output-label">{{ generationOutput.modelName }}</div>
-
-          <div v-if="generationOutput.mode === 'chat'" class="output-text">
-            {{ generationOutput.content }}
-          </div>
-
-          <div v-else class="output-media">
-            <div
-              v-for="n in generationOutput.count"
-              :key="n"
-              class="media-card"
-            >
-              <el-icon :size="40">
-                <Picture v-if="generationOutput.mode === 'image'" />
-                <VideoCamera v-else />
-              </el-icon>
-              <span>{{ generationOutput.mode === 'image' ? '图像' : '视频' }} {{ n }}</span>
+          <div v-else class="video-preview-player">
+            <div class="player-screen">
+              <el-icon :size="56"><VideoPlay /></el-icon>
+              <span>点击播放预览</span>
+            </div>
+            <div class="player-bar">
+              <el-icon><VideoPlay /></el-icon>
+              <div class="progress-track"><div class="progress-fill"></div></div>
+              <span class="player-time">0:00 / 0:{{ String(durationNum).padStart(2, '0') }}</span>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div class="float-pills">
-            <button
-              v-for="pill in floatPills"
-              :key="pill.label"
-              type="button"
-              class="float-pill"
-              @click.stop
-            >
-              <el-icon v-if="pill.icon" :size="14"><component :is="pill.icon" /></el-icon>
-              {{ pill.label }}
-            </button>
-          </div>
+      <!-- 图像模式 / 视频未生成 → 提示词预览 -->
+      <div v-else class="preview-zone">
+        <div v-if="prompt.trim()" class="preview-content">
+          <div class="preview-label">{{ selectedModel?.name || '请选择模型' }}</div>
+          <p class="preview-text">{{ prompt }}</p>
+        </div>
+        <div v-else class="preview-empty">
+          <div class="preview-label">{{ selectedModel?.name || '请选择模型' }}</div>
+          <p class="preview-hint">{{ currentPlaceholder }}</p>
         </div>
 
-        <!-- 空状态 -->
-        <div v-else class="output-empty">
-          <div class="output-label">{{ selectedModel?.name || '请选择模型' }}</div>
-          <p class="output-hint">{{ emptyHint }}</p>
+        <div class="float-pills">
+          <button
+            v-for="pill in floatPills"
+            :key="pill.label"
+            type="button"
+            class="float-pill"
+            @click.stop
+          >
+            <el-icon v-if="pill.icon" :size="14"><component :is="pill.icon" /></el-icon>
+            {{ pill.label }}
+          </button>
         </div>
       </div>
     </main>
@@ -154,6 +145,110 @@
     <!-- 底部控制栏（含输入） -->
     <footer class="control-bar" @click.stop>
       <div class="control-dock">
+        <!-- 视频专用工具栏：参考图 + 镜头运动 -->
+        <div v-if="activeMode === 'video'" class="video-tools-row">
+          <div class="tool-block ref-block">
+            <span class="tool-label">参考图</span>
+            <div class="ref-slots">
+              <button type="button" class="ref-upload" title="上传参考图" @click="triggerRefUpload">
+                <el-icon :size="20"><Upload /></el-icon>
+              </button>
+              <div
+                v-for="(img, idx) in referenceImages"
+                :key="idx"
+                class="ref-thumb"
+              >
+                <img :src="img" alt="参考图" />
+                <button type="button" class="ref-remove" @click.stop="removeRefImage(idx)">
+                  <el-icon :size="12"><Close /></el-icon>
+                </button>
+              </div>
+              <div
+                v-for="n in emptyRefSlots"
+                :key="'empty-' + n"
+                class="ref-empty"
+              ></div>
+            </div>
+            <input
+              ref="refFileInput"
+              type="file"
+              accept="image/*"
+              multiple
+              class="hidden-input"
+              @change="handleRefUpload"
+            />
+          </div>
+
+          <div class="tool-block camera-block">
+            <span class="tool-label">镜头运动</span>
+            <div class="camera-select-wrap">
+              <button
+                type="button"
+                class="camera-select-btn"
+                @click.stop="showCameraMenu = !showCameraMenu"
+              >
+                <el-icon><VideoCamera /></el-icon>
+                <span>{{ cameraMovement }}</span>
+                <el-icon class="arrow"><ArrowDown /></el-icon>
+              </button>
+              <Transition name="panel-slide">
+                <div v-if="showCameraMenu" class="camera-menu" @click.stop>
+                  <button
+                    v-for="opt in cameraOptions"
+                    :key="opt.label"
+                    type="button"
+                    class="camera-opt"
+                    :class="{ active: cameraMovement === opt.label }"
+                    @click="selectCameraMovement(opt)"
+                    @mouseenter="hoverCameraLabel = opt.label"
+                    @mouseleave="hoverCameraLabel = null"
+                  >
+                    <div class="camera-opt-preview">
+                      <video
+                        v-if="opt.previewVideo"
+                        :ref="(el) => { if (el) cameraVideoRefs[opt.label] = el }"
+                        :src="opt.previewVideo"
+                        muted
+                        loop
+                        playsinline
+                        preload="metadata"
+                        class="camera-opt-video"
+                      ></video>
+                      <div v-else class="camera-opt-placeholder">
+                        <el-icon :size="16"><VideoCamera /></el-icon>
+                      </div>
+                    </div>
+                    <span class="camera-opt-label">{{ opt.label }}</span>
+                    <el-icon v-if="cameraMovement === opt.label"><Check /></el-icon>
+                  </button>
+                </div>
+              </Transition>
+            </div>
+          </div>
+
+          <div class="tool-block rhythm-block">
+            <span class="tool-label">镜头运动节奏</span>
+            <div class="rhythm-chart">
+              <svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <polyline
+                  points="0,30 20,25 40,15 60,20 80,8 100,12 120,5"
+                  fill="none"
+                  stroke="rgba(56,189,248,0.8)"
+                  stroke-width="2"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <div class="tool-block duration-block">
+            <span class="tool-label">持续时间</span>
+            <div class="duration-slider-wrap">
+              <el-slider v-model="durationNum" :min="3" :max="15" :show-tooltip="false" />
+              <span class="duration-val">{{ durationNum }}秒</span>
+            </div>
+          </div>
+        </div>
+
         <div class="prompt-input-bar">
           <textarea
             ref="promptInputRef"
@@ -174,10 +269,6 @@
             </button>
 
             <template v-if="activeMode === 'video'">
-              <button type="button" class="ctrl-btn" @click.stop="togglePopover('duration')">
-                <el-icon><Timer /></el-icon>
-                {{ duration }}秒
-              </button>
               <button type="button" class="ctrl-btn" @click.stop="togglePopover('resolution')">
                 <el-icon><Monitor /></el-icon>
                 {{ resolution }}
@@ -200,17 +291,6 @@
               <button type="button" class="ctrl-btn" @click.stop="togglePopover('style')">
                 <el-icon><Brush /></el-icon>
                 {{ stylePreset }}
-              </button>
-            </template>
-
-            <template v-else>
-              <button type="button" class="ctrl-btn" @click.stop="togglePopover('tokens')">
-                <el-icon><Document /></el-icon>
-                {{ maxTokens }} Token
-              </button>
-              <button type="button" class="ctrl-btn" @click.stop="togglePopover('temp')">
-                <el-icon><Sunny /></el-icon>
-                温度 {{ temperature }}
               </button>
             </template>
 
@@ -257,39 +337,98 @@
         </button>
       </div>
     </footer>
+
+    <!-- 生成结果预览 -->
+    <Transition name="fade">
+      <div v-if="showResult" class="result-overlay" @click="showResult = false">
+        <div class="result-card" @click.stop>
+          <div class="result-header">
+            <h3>生成结果</h3>
+            <button type="button" class="close-btn" @click="showResult = false">
+              <el-icon><Close /></el-icon>
+            </button>
+          </div>
+          <div class="result-preview" :class="activeMode">
+            <div v-if="activeMode === 'image'" class="result-media">
+              <div class="media-placeholder">
+                <el-icon :size="48"><Picture /></el-icon>
+                <span>图像预览</span>
+              </div>
+            </div>
+            <div v-else class="result-media">
+              <div class="media-placeholder">
+                <el-icon :size="48"><VideoCamera /></el-icon>
+                <span>视频预览</span>
+              </div>
+            </div>
+          </div>
+          <div class="result-meta">
+            <span>{{ selectedModel?.name }}</span>
+            <span>消耗 ¥{{ estimatedCost }}</span>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getStudioModelGroups, estimateModelCost } from '@/data/models.js'
 
-const modes = [
-  { key: 'chat', label: '对话', icon: 'ChatDotRound' },
-  { key: 'image', label: '图像', icon: 'Picture' },
-  { key: 'video', label: '视频', icon: 'VideoCamera' },
-]
+const route = useRoute()
 
-const activeMode = ref('chat')
+const activeMode = computed(() => route.meta.studioMode || 'image')
 const showModelPanel = ref(false)
 const modelSearch = ref('')
 const prompt = ref('')
 const generating = ref(false)
-const generationOutput = ref(null)
+const showResult = ref(false)
 const quantity = ref(1)
 const maxQuantity = 4
 const duration = ref('8')
 const resolution = ref('1080p')
 const aspectRatio = ref('自动')
 const stylePreset = ref('自动')
-const maxTokens = ref('4096')
-const temperature = ref('0.7')
 const audioOn = ref(false)
 const activePopover = ref(null)
 const selectedModel = ref(null)
 const promptInputRef = ref(null)
+const refFileInput = ref(null)
+const referenceImages = ref([])
+const maxRefImages = 3
+const cameraMovement = ref('向右平移')
+const showCameraMenu = ref(false)
+const hoverCameraLabel = ref(null)
+const cameraVideoRefs = ref({})
+const hasVideoPreview = ref(false)
+const durationNum = ref(8)
+
+const cameraOptions = [
+  { label: '向右平移', previewVideo: '/video/向右平移.mp4' },
+  { label: '向上平移', previewVideo: '/video/向上平移.mp4' },
+  { label: '向下平移', previewVideo: '/video/向下平移.mp4' },
+  { label: '360度旋转', previewVideo: '/video/360度旋转.mp4' },
+  { label: '放大', previewVideo: '/video/放大.mp4' },
+  { label: '跟随镜头', previewVideo: '/video/跟随镜头.mp4' },
+  { label: '静止镜头', previewVideo: '/video/静止镜头.mp4' },
+  { label: '拉远', previewVideo: '/video/拉远.mp4' },
+  { label: '上摇镜头', previewVideo: '/video/上摇镜头.mp4' },
+  { label: '手持镜头', previewVideo: '/video/手持镜头.mp4' },
+  { label: '缩小', previewVideo: '/video/缩小.mp4' },
+  { label: '推近', previewVideo: '/video/推近.mp4' },
+  { label: '无人机升空', previewVideo: '/video/无人机升空.mp4' },
+  { label: '下摇镜头', previewVideo: '/video/下摇镜头.mp4' },
+  { label: '向左平移', previewVideo: '/video/向左平移.mp4' },
+  { label: '向右推拉', previewVideo: '/video/向右推拉.mp4' },
+  { label: '向左推拉', previewVideo: '/video/向左推拉.mp4' },
+]
+
+const emptyRefSlots = computed(() =>
+  Math.max(0, maxRefImages - referenceImages.value.length)
+)
 
 const floatPills = [
   { label: '通用', icon: null },
@@ -316,26 +455,31 @@ const filteredModelGroups = computed(() => {
 
 watch(activeMode, () => {
   const groups = getStudioModelGroups(activeMode.value)
-  const first = groups[0]?.models[0] ?? null
-  selectedModel.value = first
+  selectedModel.value = groups[0]?.models[0] ?? null
   showModelPanel.value = false
-  resetOutput()
+  showCameraMenu.value = false
+  hasVideoPreview.value = false
 }, { immediate: true })
 
-const emptyHint = computed(() => {
-  const map = {
-    chat: '在下方输入问题，点击生成查看回复',
-    image: '在下方描述图像，点击生成查看结果',
-    video: '在下方描述视频，点击生成查看结果',
+watch(durationNum, (val) => {
+  duration.value = String(val)
+})
+
+watch(hoverCameraLabel, (newLabel, oldLabel) => {
+  if (oldLabel) {
+    const prev = cameraVideoRefs.value[oldLabel]
+    if (prev) prev.pause()
   }
-  return map[activeMode.value]
+  if (newLabel) {
+    const next = cameraVideoRefs.value[newLabel]
+    if (next) next.play().catch(() => {})
+  }
 })
 
 const currentPlaceholder = computed(() => {
   const map = {
-    chat: '输入您的问题或指令...',
     image: '描述您想要生成的图像...',
-    video: '如果你有无限预算，你会如何拍摄？',
+    video: '描述一下你的场景——使用方括号引用滤镜代码。',
   }
   return map[activeMode.value]
 })
@@ -351,29 +495,45 @@ const popoverOptions = computed(() => {
     resolution: ['720p', '1080p', '2K', '4K'],
     ratio: ['自动', '16:9', '9:16', '1:1', '4:3'],
     style: ['自动', '写实', '动漫', '油画', '3D'],
-    tokens: ['1024', '2048', '4096', '8192', '16384'],
-    temp: ['0.3', '0.5', '0.7', '0.9', '1.0'],
   }
   return map[activePopover.value] || []
 })
 
 function selectModel(model) {
-  if (selectedModel.value?.id !== model.id) {
-    resetOutput()
-  }
   selectedModel.value = model
   showModelPanel.value = false
-}
-
-function resetOutput() {
-  generationOutput.value = null
-  generating.value = false
-  prompt.value = ''
 }
 
 function closePanels() {
   showModelPanel.value = false
   activePopover.value = null
+  showCameraMenu.value = false
+}
+
+function selectCameraMovement(opt) {
+  cameraMovement.value = opt.label
+  showCameraMenu.value = false
+}
+
+function triggerRefUpload() {
+  refFileInput.value?.click()
+}
+
+function handleRefUpload(e) {
+  const files = Array.from(e.target.files || [])
+  const remain = maxRefImages - referenceImages.value.length
+  files.slice(0, remain).forEach(file => {
+    referenceImages.value.push(URL.createObjectURL(file))
+  })
+  e.target.value = ''
+  if (files.length > remain) {
+    ElMessage.warning(`最多上传 ${maxRefImages} 张参考图`)
+  }
+}
+
+function removeRefImage(idx) {
+  URL.revokeObjectURL(referenceImages.value[idx])
+  referenceImages.value.splice(idx, 1)
 }
 
 function togglePopover(key) {
@@ -386,8 +546,6 @@ function isOptionActive(opt) {
     resolution: resolution.value,
     ratio: aspectRatio.value,
     style: stylePreset.value,
-    tokens: maxTokens.value,
-    temp: temperature.value,
   }
   return map[activePopover.value] === opt
 }
@@ -398,8 +556,6 @@ function selectPopoverOption(opt) {
     case 'resolution': resolution.value = opt; break
     case 'ratio': aspectRatio.value = opt; break
     case 'style': stylePreset.value = opt; break
-    case 'tokens': maxTokens.value = opt; break
-    case 'temp': temperature.value = opt; break
   }
   activePopover.value = null
 }
@@ -416,21 +572,18 @@ function handleGenerate() {
     return
   }
   generating.value = true
-  generationOutput.value = null
+  if (activeMode.value === 'video') {
+    hasVideoPreview.value = false
+  }
   setTimeout(() => {
     generating.value = false
-    const mode = activeMode.value
-    generationOutput.value = {
-      modelName: selectedModel.value.name,
-      mode,
-      prompt: prompt.value.trim(),
-      count: quantity.value,
-      cost: estimatedCost.value,
-      content: mode === 'chat'
-        ? `针对「${prompt.value.trim()}」的回复：\n\n这是通过 ${selectedModel.value.name} 生成的模拟内容。RelayHub 已将请求路由至对应模型，接入后端后将在此区域实时展示生成结果。`
-        : null,
+    if (activeMode.value === 'video') {
+      hasVideoPreview.value = true
+      ElMessage.success('视频生成完成')
+    } else {
+      showResult.value = true
+      ElMessage.success('生成完成')
     }
-    ElMessage.success('生成完成')
   }, 2000)
 }
 
@@ -440,10 +593,6 @@ function autoResizeInput() {
   el.style.height = 'auto'
   el.style.height = `${Math.min(el.scrollHeight, 120)}px`
 }
-
-onBeforeRouteLeave(() => {
-  resetOutput()
-})
 </script>
 
 <style scoped>
@@ -494,6 +643,34 @@ onBeforeRouteLeave(() => {
   justify-content: space-between;
   padding: 16px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 24px;
+}
+
+.studio-nav {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.studio-nav a {
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  transition: all 0.2s;
+}
+
+.studio-nav a:hover {
+  color: #fff;
+}
+
+.studio-nav a.router-link-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .logo {
@@ -567,17 +744,12 @@ onBeforeRouteLeave(() => {
   cursor: pointer;
   transition: all 0.2s;
   min-width: 56px;
+  text-decoration: none;
 }
 
 .mode-btn:hover {
   color: rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.05);
-}
-
-.mode-btn.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Model panel */
@@ -747,14 +919,328 @@ onBeforeRouteLeave(() => {
   padding: 40px 120px 220px 100px;
 }
 
-.output-zone {
+.studio-main.is-video {
+  align-items: flex-start;
+  padding-top: 48px;
+}
+
+.video-preview-zone {
+  width: 100%;
+  max-width: 960px;
+}
+
+.video-preview-frame {
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  position: relative;
+}
+
+.video-preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  padding: 24px;
+}
+
+.video-preview-loading .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.video-preview-player {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.player-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.player-screen:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 35%;
+  height: 100%;
+  background: #38bdf8;
+  border-radius: 2px;
+}
+
+.video-tools-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+.tool-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ref-slots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ref-upload,
+.ref-empty,
+.ref-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.ref-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ref-upload:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.ref-empty {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ref-thumb {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ref-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ref-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ref-thumb:hover .ref-remove {
+  opacity: 1;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.camera-select-wrap {
+  position: relative;
+}
+
+.camera-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.camera-select-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.camera-select-btn .arrow {
+  margin-left: auto;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.camera-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  min-width: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  background: rgba(22, 22, 22, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.camera-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.camera-opt:hover,
+.camera-opt.active {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+}
+
+.camera-opt-preview {
+  width: 60px;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.camera-opt-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-opt-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.camera-opt-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.rhythm-chart {
+  width: 120px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rhythm-chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.duration-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.duration-slider-wrap :deep(.el-slider) {
+  flex: 1;
+}
+
+.duration-val {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+.preview-zone {
   width: 100%;
   max-width: 720px;
   position: relative;
   text-align: center;
 }
 
-.output-label {
+.preview-label {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -762,89 +1248,33 @@ onBeforeRouteLeave(() => {
   margin-bottom: 20px;
 }
 
-.output-text {
+.preview-text {
   font-size: clamp(24px, 3.5vw, 38px);
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.4;
   letter-spacing: -0.02em;
   color: #7ec8e3;
   word-break: break-word;
-  white-space: pre-wrap;
-  text-align: center;
 }
 
-.output-hint {
-  font-size: clamp(20px, 3vw, 32px);
+.preview-hint {
+  font-size: clamp(24px, 3.5vw, 38px);
   font-weight: 500;
   line-height: 1.4;
-  color: rgba(126, 200, 227, 0.2);
-}
-
-.output-generating {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.generating-indicator {
-  display: flex;
-  gap: 8px;
-}
-
-.generating-indicator .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #7ec8e3;
-  animation: bounce 1.2s infinite ease-in-out;
-}
-
-.generating-indicator .dot:nth-child(2) { animation-delay: 0.15s; }
-.generating-indicator .dot:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
-}
-
-.generating-text {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.output-content {
-  position: relative;
-}
-
-.output-media {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
-}
-
-.media-card {
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 13px;
+  color: rgba(126, 200, 227, 0.25);
 }
 
 .float-pills {
-  margin-top: 40px;
+  position: absolute;
+  bottom: -56px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+  width: max-content;
+  max-width: 100%;
 }
 
 .float-pill {
@@ -880,7 +1310,7 @@ onBeforeRouteLeave(() => {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .prompt-input-bar {
@@ -1067,6 +1497,90 @@ onBeforeRouteLeave(() => {
   color: #38bdf8;
 }
 
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.result-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.result-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.result-preview {
+  padding: 24px;
+  min-height: 200px;
+}
+
+.result-chat p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.media-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 240px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+.result-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 768px) {
   .mode-rail {
     left: 8px;
@@ -1078,7 +1592,16 @@ onBeforeRouteLeave(() => {
   }
 
   .studio-main {
-    padding: 32px 16px 260px 72px;
+    padding: 32px 16px 320px 72px;
+  }
+
+  .video-tools-row {
+    gap: 12px;
+  }
+
+  .rhythm-block,
+  .duration-block {
+    display: none;
   }
 
   .control-bar {

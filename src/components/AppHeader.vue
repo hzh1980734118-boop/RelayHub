@@ -11,11 +11,11 @@
       </router-link>
 
       <nav class="nav-links">
-        <router-link to="/studio">创作</router-link>
-        <router-link to="/models">模型</router-link>
+        <router-link to="/studio/image">生图</router-link>
+        <router-link to="/studio/video">生视频</router-link>
+        <router-link to="/studio/audio">配音</router-link>
         <router-link to="/pricing">定价</router-link>
         <router-link to="/docs">文档</router-link>
-        <a href="#">社区</a>
       </nav>
 
       <div class="header-actions">
@@ -34,8 +34,9 @@
 
     <Transition name="slide">
       <div v-if="mobileOpen" class="mobile-menu">
-        <router-link to="/studio" @click="mobileOpen = false">创作</router-link>
-        <router-link to="/models" @click="mobileOpen = false">模型</router-link>
+        <router-link to="/studio/image" @click="mobileOpen = false">生图</router-link>
+        <router-link to="/studio/video" @click="mobileOpen = false">生视频</router-link>
+        <router-link to="/studio/audio" @click="mobileOpen = false">配音</router-link>
         <router-link to="/pricing" @click="mobileOpen = false">定价</router-link>
         <router-link to="/docs" @click="mobileOpen = false">文档</router-link>
         <router-link to="/login" @click="mobileOpen = false">登录</router-link>

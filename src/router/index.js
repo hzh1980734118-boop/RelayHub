@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory('/RelayHub/'),
+  history: createWebHistory(),
   routes: [
     {
       path: '/',
@@ -15,8 +15,24 @@ const router = createRouter({
     },
     {
       path: '/studio',
-      name: 'studio',
+      redirect: '/studio/image',
+    },
+    {
+      path: '/studio/image',
+      name: 'studio-image',
       component: () => import('@/views/Studio.vue'),
+      meta: { studioMode: 'image' },
+    },
+    {
+      path: '/studio/video',
+      name: 'studio-video',
+      component: () => import('@/views/Studio.vue'),
+      meta: { studioMode: 'video' },
+    },
+    {
+      path: '/studio/audio',
+      name: 'studio-audio',
+      component: () => import('@/views/AudioStudio.vue'),
     },
     {
       path: '/models',

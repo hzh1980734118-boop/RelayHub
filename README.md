@@ -1,5 +1,6 @@
 # RelayHub — AI 模型中转站
 
+参考 [Higgsfield AI](https://higgsfield.ai/) 和 [Higgsfield Cloud](https://cloud.higgsfield.ai/dashboard) 风格开发的 AI 模型中转平台前端展示。
 
 ## 技术栈
 

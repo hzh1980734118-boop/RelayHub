@@ -365,7 +365,7 @@ const currentPageTitle = computed(() => pageTitles[activeNav.value])
 
 function handleNavClick(key) {
   if (key === 'studio') {
-    router.push('/studio')
+    router.push('/studio/image')
     return
   }
   activeNav.value = key
