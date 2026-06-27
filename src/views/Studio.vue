@@ -405,25 +405,25 @@ const hoverCameraLabel = ref(null)
 const cameraVideoRefs = ref({})
 const hasVideoPreview = ref(false)
 const durationNum = ref(8)
-
+const base = import.meta.env.BASE_URL;
 const cameraOptions = [
-  { label: '向右平移', previewVideo: '/video/向右平移.mp4' },
-  { label: '向上平移', previewVideo: '/video/向上平移.mp4' },
-  { label: '向下平移', previewVideo: '/video/向下平移.mp4' },
-  { label: '360度旋转', previewVideo: '/video/360度旋转.mp4' },
-  { label: '放大', previewVideo: '/video/放大.mp4' },
-  { label: '跟随镜头', previewVideo: '/video/跟随镜头.mp4' },
-  { label: '静止镜头', previewVideo: '/video/静止镜头.mp4' },
-  { label: '拉远', previewVideo: '/video/拉远.mp4' },
-  { label: '上摇镜头', previewVideo: '/video/上摇镜头.mp4' },
-  { label: '手持镜头', previewVideo: '/video/手持镜头.mp4' },
-  { label: '缩小', previewVideo: '/video/缩小.mp4' },
-  { label: '推近', previewVideo: '/video/推近.mp4' },
-  { label: '无人机升空', previewVideo: '/video/无人机升空.mp4' },
-  { label: '下摇镜头', previewVideo: '/video/下摇镜头.mp4' },
-  { label: '向左平移', previewVideo: '/video/向左平移.mp4' },
-  { label: '向右推拉', previewVideo: '/video/向右推拉.mp4' },
-  { label: '向左推拉', previewVideo: '/video/向左推拉.mp4' },
+  { label: '向右平移', previewVideo: `${base}video/向右平移.mp4` },
+  { label: '向上平移', previewVideo: `${base}video/向上平移.mp4` },
+  { label: '向下平移', previewVideo: `${base}video/向下平移.mp4` },
+  { label: '360度旋转', previewVideo: `${base}video/360度旋转.mp4` },
+  { label: '放大', previewVideo: `${base}video/放大.mp4` },
+  { label: '跟随镜头', previewVideo: `${base}video/跟随镜头.mp4` },
+  { label: '静止镜头', previewVideo: `${base}video/静止镜头.mp4` },
+  { label: '拉远', previewVideo: `${base}video/拉远.mp4` },
+  { label: '上摇镜头', previewVideo: `${base}video/上摇镜头.mp4` },
+  { label: '手持镜头', previewVideo: `${base}video/手持镜头.mp4` },
+  { label: '缩小', previewVideo: `${base}video/缩小.mp4` },
+  { label: '推近', previewVideo: `${base}video/推近.mp4` },
+  { label: '无人机升空', previewVideo: `${base}video/无人机升空.mp4` },
+  { label: '下摇镜头', previewVideo: `${base}video/下摇镜头.mp4` },
+  { label: '向左平移', previewVideo: `${base}video/向左平移.mp4` },
+  { label: '向右推拉', previewVideo: `${base}video/向右推拉.mp4` },
+  { label: '向左推拉', previewVideo: `${base}video/向左推拉.mp4` },
 ]
 
 const emptyRefSlots = computed(() =>
