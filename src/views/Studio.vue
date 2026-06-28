@@ -17,12 +17,6 @@
         <span>RelayHub</span>
       </router-link>
 
-      <nav class="studio-nav">
-        <router-link to="/studio/image">生图</router-link>
-        <router-link to="/studio/video">生视频</router-link>
-        <router-link to="/studio/audio">配音</router-link>
-      </nav>
-
       <div class="header-right">
         <span class="balance">
           <el-icon><Coin /></el-icon>
@@ -43,57 +37,6 @@
       </router-link>
     </aside>
 
-    <!-- 模型选择面板 -->
-    <Transition name="panel-slide">
-      <aside v-if="showModelPanel" class="model-panel" @click.stop>
-        <div class="panel-search">
-          <el-input
-            v-model="modelSearch"
-            placeholder="搜索模型..."
-            prefix-icon="Search"
-            clearable
-          />
-        </div>
-        <div class="panel-scroll">
-          <div v-if="filteredModelGroups.length === 0" class="empty-models">
-            <p>当前模式下暂无可用模型</p>
-            <span>请前往控制台 → 模型管理，启用并确保模型在线</span>
-            <router-link to="/dashboard">
-              <el-button plain size="small">前往模型管理</el-button>
-            </router-link>
-          </div>
-          <div v-for="group in filteredModelGroups" :key="group.title" class="model-group">
-            <h4>{{ group.title }}</h4>
-            <button
-              v-for="model in group.models"
-              :key="model.id"
-              type="button"
-              class="model-item"
-              :class="{ selected: selectedModel?.id === model.id }"
-              @click="selectModel(model)"
-            >
-              <div class="model-thumb" :style="{ background: model.gradient }"></div>
-              <div class="model-info">
-                <div class="model-name-row">
-                  <span class="model-name">{{ model.name }}</span>
-                  <span v-if="model.hot" class="model-badge hot">热门</span>
-                  <el-icon v-if="selectedModel?.id === model.id" class="check-icon"><CircleCheckFilled /></el-icon>
-                </div>
-                <p class="model-desc">{{ model.desc }}</p>
-                <div class="model-specs">
-                  <span>{{ model.provider }}</span>
-                  <span>{{ model.typeLabel }}</span>
-                  <span v-if="model.context !== '-'">{{ model.context }}</span>
-                  <span>{{ model.price }}</span>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </aside>
-    </Transition>
-
-    <!-- 主内容区：预览展示 -->
     <main class="studio-main" :class="{ 'is-video': activeMode === 'video' && (generating || hasVideoPreview) }">
       <!-- 视频模式：生成中 / 已生成 → 16:9 预览面板 -->
       <div v-if="activeMode === 'video' && (generating || hasVideoPreview)" class="video-preview-zone">
@@ -263,7 +206,7 @@
 
         <div class="control-toolbar">
           <div class="control-left">
-            <button type="button" class="ctrl-btn model-btn" @click="showModelPanel = !showModelPanel">
+            <button type="button" class="ctrl-btn model-btn" @click.stop="togglePopover('model')">
               <span class="ctrl-icon model-wave">〰</span>
               {{ selectedModel?.name || '选择模型' }}
             </button>
@@ -324,7 +267,7 @@
       </div>
 
       <!-- 参数弹出选择 -->
-      <div v-if="activePopover" class="param-popover" @click.stop>
+      <div v-if="activePopover && activePopover !== 'model'" class="param-popover" @click.stop>
         <button
           v-for="opt in popoverOptions"
           :key="opt"
@@ -334,6 +277,35 @@
           @click="selectPopoverOption(opt)"
         >
           {{ opt }}
+        </button>
+      </div>
+
+      <!-- 模型下拉菜单 -->
+      <div v-if="activePopover === 'model'" class="model-dropdown" @click.stop>
+        <div class="model-dropdown-search">
+          <el-input
+            v-model="modelSearch"
+            placeholder="搜索模型..."
+            prefix-icon="Search"
+            size="small"
+            clearable
+          />
+        </div>
+        <div v-if="filteredDropdownModels.length === 0" class="model-dropdown-empty">
+          暂无匹配模型
+        </div>
+        <button
+          v-for="m in filteredDropdownModels"
+          :key="m.id"
+          type="button"
+          class="model-dropdown-item"
+          :class="{ active: selectedModel?.id === m.id }"
+          @click="selectModel(m); activePopover = null"
+        >
+          <span class="model-dropdown-name">{{ m.name }}</span>
+          <span class="model-dropdown-provider">{{ m.provider }}</span>
+          <span class="model-dropdown-price">{{ m.price }}</span>
+          <el-icon v-if="selectedModel?.id === m.id" class="model-dropdown-check"><Check /></el-icon>
         </button>
       </div>
     </footer>
@@ -381,7 +353,6 @@ import { getStudioModelGroups, estimateModelCost } from '@/data/models.js'
 const route = useRoute()
 
 const activeMode = computed(() => route.meta.studioMode || 'image')
-const showModelPanel = ref(false)
 const modelSearch = ref('')
 const prompt = ref('')
 const generating = ref(false)
@@ -436,27 +407,21 @@ const floatPills = [
   { label: '镜头：自动', icon: 'VideoCamera' },
 ]
 
-const modelGroups = computed(() => getStudioModelGroups(activeMode.value))
+const dropdownModels = computed(() => getStudioModelGroups(activeMode.value).flatMap(g => g.models))
 
-const filteredModelGroups = computed(() => {
-  if (!modelSearch.value) return modelGroups.value
+const filteredDropdownModels = computed(() => {
+  if (!modelSearch.value) return dropdownModels.value
   const q = modelSearch.value.toLowerCase()
-  return modelGroups.value
-    .map(g => ({
-      ...g,
-      models: g.models.filter(m =>
-        m.name.toLowerCase().includes(q) ||
-        m.desc.toLowerCase().includes(q) ||
-        m.provider.toLowerCase().includes(q)
-      ),
-    }))
-    .filter(g => g.models.length > 0)
+  return dropdownModels.value.filter(m =>
+    m.name.toLowerCase().includes(q) ||
+    m.desc.toLowerCase().includes(q) ||
+    m.provider.toLowerCase().includes(q)
+  )
 })
 
 watch(activeMode, () => {
   const groups = getStudioModelGroups(activeMode.value)
   selectedModel.value = groups[0]?.models[0] ?? null
-  showModelPanel.value = false
   showCameraMenu.value = false
   hasVideoPreview.value = false
 }, { immediate: true })
@@ -478,8 +443,8 @@ watch(hoverCameraLabel, (newLabel, oldLabel) => {
 
 const currentPlaceholder = computed(() => {
   const map = {
-    image: '描述您想要生成的图像...',
-    video: '描述一下你的场景——使用方括号引用滤镜代码。',
+    image: '让灵感，瞬间成为画面',
+    video: '让创意动起来',
   }
   return map[activeMode.value]
 })
@@ -501,11 +466,9 @@ const popoverOptions = computed(() => {
 
 function selectModel(model) {
   selectedModel.value = model
-  showModelPanel.value = false
 }
 
 function closePanels() {
-  showModelPanel.value = false
   activePopover.value = null
   showCameraMenu.value = false
 }
@@ -563,7 +526,7 @@ function selectPopoverOption(opt) {
 function handleGenerate() {
   if (!selectedModel.value) {
     ElMessage.warning('请先选择模型')
-    showModelPanel.value = true
+    activePopover.value = 'model'
     return
   }
   if (!prompt.value.trim()) {
@@ -646,33 +609,6 @@ function autoResizeInput() {
   gap: 24px;
 }
 
-.studio-nav {
-  display: flex;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 4px;
-}
-
-.studio-nav a {
-  padding: 8px 20px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.55);
-  transition: all 0.2s;
-}
-
-.studio-nav a:hover {
-  color: #fff;
-}
-
-.studio-nav a.router-link-active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
 .logo {
   display: flex;
   align-items: center;
@@ -752,150 +688,83 @@ function autoResizeInput() {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Model panel */
-.model-panel {
-  position: fixed;
-  left: 88px;
-  bottom: 200px;
-  width: 360px;
-  max-height: calc(100vh - 180px);
-  background: rgba(18, 18, 18, 0.95);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+/* Model dropdown */
+.model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
   z-index: 30;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
-}
-
-.panel-search {
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.panel-search :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04) !important;
-}
-
-.panel-scroll {
-  flex: 1;
+  width: 320px;
+  max-height: 360px;
   overflow-y: auto;
-  padding: 8px 12px 16px;
-}
-
-.model-group h4 {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.06em;
-  padding: 12px 8px 8px;
-}
-
-.model-item {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid transparent;
+  padding: 8px;
+  background: rgba(22, 22, 22, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.model-dropdown-search {
+  padding: 0 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: 4px;
 }
 
-.model-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.model-item.selected {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.model-thumb {
-  width: 48px;
-  height: 48px;
+.model-dropdown-search :deep(.el-input__wrapper) {
   border-radius: 10px;
-  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04) !important;
 }
 
-.model-info {
+.model-dropdown-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.model-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.model-dropdown-item:hover,
+.model-dropdown-item.active {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+}
+
+.model-dropdown-name {
+  font-weight: 600;
   flex: 1;
   min-width: 0;
 }
 
-.model-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.model-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.model-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
-}
-
-.model-badge.hot {
-  background: #facc15;
-  color: #000;
-}
-
-.empty-models {
-  text-align: center;
-  padding: 32px 16px;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.empty-models p {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.empty-models span {
-  display: block;
-  font-size: 12px;
-  margin-bottom: 16px;
-  line-height: 1.6;
-}
-
-.check-icon {
-  margin-left: auto;
-  color: var(--accent-green);
-}
-
-.model-desc {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
-  line-height: 1.4;
-  margin-bottom: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.model-specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.model-dropdown-provider {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.35);
+}
+
+.model-dropdown-price {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: monospace;
+}
+
+.model-dropdown-check {
+  color: #38bdf8;
+  font-size: 16px;
 }
 
 .panel-slide-enter-active,
@@ -1618,10 +1487,5 @@ function autoResizeInput() {
     width: 100%;
   }
 
-  .model-panel {
-    left: 72px;
-    right: 12px;
-    width: auto;
-  }
 }
 </style>

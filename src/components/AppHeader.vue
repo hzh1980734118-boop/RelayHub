@@ -11,19 +11,23 @@
       </router-link>
 
       <nav class="nav-links">
-        <router-link to="/studio/image">生图</router-link>
-        <router-link to="/studio/video">生视频</router-link>
-        <router-link to="/studio/audio">配音</router-link>
-        <router-link to="/pricing">定价</router-link>
-        <router-link to="/docs">文档</router-link>
+        <router-link to="/">首页</router-link>
+        <router-link to="/studio/image">图片</router-link>
+        <router-link to="/studio/video">视频</router-link>
+        <router-link to="/studio/audio">音频</router-link>
+        <router-link to="/team">团队协作</router-link>
+        <router-link to="/ecommerce">电商工作室</router-link>
+        <router-link to="/film">影视工作室</router-link>
+        <router-link to="/digital-human">AI数字人</router-link>
+        <router-link to="/director">导演台</router-link>
+        <router-link to="/comfyui">comfyui</router-link>
+        <router-link to="/templates">模板中心</router-link>
       </nav>
 
       <div class="header-actions">
-        <router-link to="/login">
-          <el-button plain size="default">登录</el-button>
-        </router-link>
-        <router-link to="/dashboard">
-          <el-button type="primary" size="default">控制台</el-button>
+        <router-link to="/api">API</router-link>
+        <router-link to="/dashboard" class="profile-link">
+          <el-button plain size="default">个人中心</el-button>
         </router-link>
       </div>
 
@@ -34,13 +38,19 @@
 
     <Transition name="slide">
       <div v-if="mobileOpen" class="mobile-menu">
-        <router-link to="/studio/image" @click="mobileOpen = false">生图</router-link>
-        <router-link to="/studio/video" @click="mobileOpen = false">生视频</router-link>
-        <router-link to="/studio/audio" @click="mobileOpen = false">配音</router-link>
-        <router-link to="/pricing" @click="mobileOpen = false">定价</router-link>
-        <router-link to="/docs" @click="mobileOpen = false">文档</router-link>
-        <router-link to="/login" @click="mobileOpen = false">登录</router-link>
-        <router-link to="/dashboard" @click="mobileOpen = false">控制台</router-link>
+        <router-link to="/" @click="mobileOpen = false">首页</router-link>
+        <router-link to="/studio/image" @click="mobileOpen = false">图片</router-link>
+        <router-link to="/studio/video" @click="mobileOpen = false">视频</router-link>
+        <router-link to="/studio/audio" @click="mobileOpen = false">音频</router-link>
+        <router-link to="/team" @click="mobileOpen = false">团队协作</router-link>
+        <router-link to="/ecommerce" @click="mobileOpen = false">电商工作室</router-link>
+        <router-link to="/film" @click="mobileOpen = false">影视工作室</router-link>
+        <router-link to="/digital-human" @click="mobileOpen = false">AI数字人</router-link>
+        <router-link to="/director" @click="mobileOpen = false">导演台</router-link>
+        <router-link to="/comfyui" @click="mobileOpen = false">comfyui</router-link>
+        <router-link to="/templates" @click="mobileOpen = false">模板中心</router-link>
+        <router-link to="/api" @click="mobileOpen = false">API</router-link>
+        <router-link to="/dashboard" @click="mobileOpen = false">个人中心</router-link>
       </div>
     </Transition>
   </header>
@@ -85,13 +95,13 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .header-inner {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 0 24px;
   height: 64px;
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
 }
 
 .logo {
@@ -125,26 +135,48 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .nav-links {
   display: flex;
-  gap: 28px;
+  gap: 4px;
   flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-links::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-links a {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
-  transition: color 0.2s;
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: all 0.2s;
 }
 
 .nav-links a:hover,
 .nav-links a.router-link-active {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  flex-shrink: 0;
+}
+
+.header-actions > a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.header-actions > a:hover {
+  color: var(--text-primary);
 }
 
 .mobile-toggle {
@@ -183,8 +215,11 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   transform: translateY(-8px);
 }
 
-@media (max-width: 768px) {
-  .nav-links,
+@media (max-width: 1024px) {
+  .nav-links {
+    display: none;
+  }
+
   .header-actions {
     display: none;
   }
