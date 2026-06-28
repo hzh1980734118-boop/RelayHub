@@ -131,10 +131,8 @@
           <video
             v-if="tpl.video"
             :src="tpl.video"
-            muted loop playsinline preload="metadata"
+            muted loop autoplay playsinline preload="auto"
             class="template-video-el"
-            @mouseenter="(e) => e.target.play().catch(() => {})"
-            @mouseleave="(e) => { e.target.pause(); e.target.currentTime = 0 }"
           ></video>
           <span class="template-label">{{ tpl.label }}</span>
           <span class="template-name">{{ tpl.name }}</span>

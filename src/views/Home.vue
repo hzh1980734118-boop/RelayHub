@@ -30,11 +30,10 @@
             :src="promo.previewVideo"
             muted
             loop
+            autoplay
             playsinline
-            preload="metadata"
+            preload="auto"
             class="promo-video-el"
-            @mouseenter="(e) => e.target.play().catch(() => {})"
-            @mouseleave="(e) => { e.target.pause(); e.target.currentTime = 0 }"
           ></video>
           <div v-else class="promo-placeholder">
             <el-icon :size="32"><VideoCamera /></el-icon>
